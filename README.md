@@ -6,6 +6,6 @@ To install,
 
 ```bash
 git clone https://github.com/bhatiaabhinav/gymGame.git
-cd gym-ERSLE
+cd gymGame
 pip install -e .
 ```
