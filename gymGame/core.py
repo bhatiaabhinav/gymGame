@@ -37,9 +37,9 @@ class GameObject:
         if isinstance(c, gymGame.Collider2D):
             self.collider2D = c
 
-    def getComponent(self, typ: type):
+    def getComponent(self, typ: type, tag=None):
         # TODO: make this more efficient
-        return next(filter(lambda c: isinstance(c, typ), self._components), None)
+        return next(filter(lambda c: isinstance(c, typ) and (tag is None or c.tag==tag), self._components), None)
 
     def setPosition(self, newPosition):
         change = newPosition - self.position
@@ -69,6 +69,7 @@ class GameComponent:
         self._startCalled = False
         self._awakeCalled = False
         self._enableCalled = False
+        self.tag = None
         self._init_order = GameComponent.count
         GameComponent.count += 1
 
@@ -109,14 +110,16 @@ class GameComponent:
         pass
 
     def enable(self):
-        self._isEnabled = True
-        self.onEnable()
-        self._enableCalled = True
-        self._start()
+        if not self._isEnabled:
+            self._isEnabled = True
+            self.onEnable()
+            self._enableCalled = True
+            self._start()
 
     def disable(self):
-        self._isEnabled = False
-        self.onDisable()
+        if self._isEnabled:
+            self._isEnabled = False
+            self.onDisable()
 
 
 class Scene(gym.Env):

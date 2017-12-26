@@ -7,26 +7,29 @@ class SimpleSprite(gymGame.GameComponent):
     def __init__(self, sprite, w=1, h=1, static=False):
         super().__init__()
         self.setSize([w, h])
+        self.setRotation(0)
         self.sprite = sprite # type: pygame.Surface
         self.static = static
 
     def awake(self):
-        Camera.instance.spritesBatch.append(self)
+        self.camera = self.gameObject.scene.findObjectByName('Main Camera').getComponent(gymGame.Camera) # type: gymGame.Camera
+        self.camera.spritesBatch.append(self)
 
     def setSize(self, size):
         self.size = size
+        self.transform_changed = True
+
+    def setRotation(self, radians):
+        self.rotation_degrees = radians * 180 / np.pi
+        self.transform_changed = True
     
     def load(filename):
         return pygame.image.load(filename)#.convert_alpha()
 
     def update(self):
-        Camera.instance.spritesBatch.append(self)
+        self.camera.spritesBatch.append(self)
 
 class Camera(gymGame.GameComponent):
-    instance = None # type: Camera
-    # pygame.init()
-    # pygame.display.init()
-    # screen = pygame.display.set_mode((1,1))
     def __init__(self, renderingSurface, fov, backgroundColor=(0,0,0)):
         super().__init__()
         self.spritesBatch = [] # type: List[SimpleSprite]
@@ -35,8 +38,7 @@ class Camera(gymGame.GameComponent):
         self.setRenderingSurface(renderingSurface)
         self.backgroundColor = backgroundColor
         self.staticBackground = None
-        self._scaledSprites = {} # type: Dict[SimpleSprite, pygame.Surface]
-        Camera.instance = self
+        self._transformedSprites = {} # type: Dict[SimpleSprite, pygame.Surface]
         self.latestFrame = np.zeros([210,150,3], dtype=np.uint8)
 
     def createRenderingSurface(resolution):
@@ -50,9 +52,6 @@ class Camera(gymGame.GameComponent):
         self.fov = fov
         self._map_bounds = [[-fov[0]/2, -fov[1]/2], [fov[0]/2, fov[1]/2]]
 
-    def awake(self):
-        Camera.instance = self
-
     def _getCoordinatesOnSurface(self, position):
         x = (position[0] - self._map_bounds[0][0]) * self.resolution[0] // (self._map_bounds[1][0] - self._map_bounds[0][0])
         y = (position[1] - self._map_bounds[0][1]) * self.resolution[1] // (self._map_bounds[1][1] - self._map_bounds[0][1])
@@ -61,14 +60,16 @@ class Camera(gymGame.GameComponent):
     def _getSizeOnSurface(self, size):
         return (int((size[0] * self.resolution[0]) / self.fov[0]), int((size[1] * self.resolution[1]) / self.fov[1]))
 
-    def _getScaledSprite(self, ss: SimpleSprite):
-        if ss in self._scaledSprites:
-            return self._scaledSprites[ss]
+    def _getTransformedSprite(self, ss: SimpleSprite):
+        if ss in self._transformedSprites and not ss.transform_changed:
+            return self._transformedSprites[ss]
         else:
             size = self._getSizeOnSurface(ss.size)
-            scaled = pygame.transform.smoothscale(ss.sprite, size)
-            self._scaledSprites[ss] = scaled
-            return scaled
+            transformed = pygame.transform.smoothscale(ss.sprite, size)
+            transformed = pygame.transform.rotate(transformed, ss.rotation_degrees)
+            self._transformedSprites[ss] = transformed
+            ss.transform_changed = False
+            return transformed
 
     def update(self):
         self.render()
@@ -76,9 +77,9 @@ class Camera(gymGame.GameComponent):
     def _drawSpriteComponent(self, sc):
         upperLeft = (sc.gameObject.position[0] - sc.size[0]/2, sc.gameObject.position[1] + sc.size[1]/2)
         dest = self._getCoordinatesOnSurface(upperLeft)
-        scaledSprite = self._getScaledSprite(sc)
-        rect = (dest, (scaledSprite.get_width(), scaledSprite.get_height()))
-        self.surface.blit(scaledSprite, dest)
+        transformedSprite = self._getTransformedSprite(sc)
+        rect = (dest, (transformedSprite.get_width(), transformedSprite.get_height()))
+        self.surface.blit(transformedSprite, dest)
         return rect
 
     def _clear(self):
