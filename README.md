@@ -1,5 +1,4 @@
 Unity game engine like framework to build OPENAI gym environments.
-Currently only 2D colliders and rendering is avaliable.
 
 To install,
 
