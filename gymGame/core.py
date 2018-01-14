@@ -5,17 +5,18 @@ import gym
 import random
 from typing import List, Set, TypeVar
 
+
 class GameObject:
     def __init__(self):
         self.name = "GameObject"
         self.isActive = True
         self.layer = 'general'
-        self._components = [] # type: List[GameComponent]
-        self._children = set() # type: Set[GameObject]
-        self._parent = None # type: GameObject
+        self._components = []  # type: List[GameComponent]
+        self._children = set()  # type: Set[GameObject]
+        self._parent = None  # type: GameObject
         self.position = np.array([0.0, 0.0, 0.0])
-        self.collider2D = None # type: gymGame.Collider2D
-        self.scene = None # type: Scene
+        self.collider2D = None  # type: gymGame.Collider2D
+        self.scene = None  # type: Scene
 
     def activate(self):
         self.isActive = True
@@ -39,7 +40,7 @@ class GameObject:
 
     def getComponent(self, typ: type, tag=None):
         # TODO: make this more efficient
-        return next(filter(lambda c: isinstance(c, typ) and (tag is None or c.tag==tag), self._components), None)
+        return next(filter(lambda c: isinstance(c, typ) and (tag is None or c.tag == tag), self._components), None)
 
     def setPosition(self, newPosition):
         change = newPosition - self.position
@@ -63,9 +64,10 @@ class GameObject:
 
 class GameComponent:
     count = 0
+
     def __init__(self):
         self._isEnabled = True
-        self.gameObject = None # type: GameObject
+        self.gameObject = None  # type: GameObject
         self._startCalled = False
         self._awakeCalled = False
         self._enableCalled = False
@@ -126,14 +128,14 @@ class Scene(gym.Env):
 
     def __init__(self):
         super().__init__()
-        self._gameObjects = set() # type: Set[GameObject]
-        self._dontDestroyOnLoadObjects = set() # type: Set[GameObject]
+        self._gameObjects = set()  # type: Set[GameObject]
+        self._dontDestroyOnLoadObjects = set()  # type: Set[GameObject]
         self._isRunning = False
         self.random = random.Random()
 
-    def instantiate(self, cls, position = None) -> GameObject:
+    def instantiate(self, cls, position=None) -> GameObject:
         if issubclass(cls, GameObject):
-            obj = cls() # type: GameObject
+            obj = cls()  # type: GameObject
             # print('Created GameObject ' + obj.name)
             if position is not None:
                 obj.setPosition(position)
@@ -150,14 +152,14 @@ class Scene(gym.Env):
             raise TypeError()
 
     def findObjectByName(self, name):
-        return next(filter(lambda o: o.name==name, self._gameObjects), None)
-        
+        return next(filter(lambda o: o.name == name, self._gameObjects), None)
+
     def dontDestroyOnLoad(self, gameObj: GameObject):
         print('GameObject {0} marked as dontDestroyOnLoad'.format(gameObj.name))
         self._dontDestroyOnLoadObjects.add(gameObj)
 
     def destroy(self, gameObj: GameObject):
-        #print('Destroying GameObject ' + gameObj.name)
+        # print('Destroying GameObject ' + gameObj.name)
         if gameObj.isActive:
             for c in gameObj._components:
                 c.onDisable()
@@ -165,9 +167,9 @@ class Scene(gym.Env):
         self._dontDestroyOnLoadObjects.discard(gameObj)
         for c in gameObj._components:
             if hasattr(type(c), 'instance'):
-                #print('Static reference found')
+                # print('Static reference found')
                 if getattr(type(c), 'instance') == c:
-                    #print('The reference set to null on destroying the object')
+                    # print('The reference set to null on destroying the object')
                     setattr(type(c), 'instance', None)
 
     def _destroyObjects(self, destroyAll=False):
@@ -178,16 +180,19 @@ class Scene(gym.Env):
         for obj in toDestroy:
             self.destroy(obj)
         self._isRunning = False
+        GameComponent.count = 0
 
     def _reset(self):
         self._isRunning = True
         # run all awakes and enabled
         self._executeInOrder(self._gameObjects, lambda c: c._awake())
-        self._executeInOrder(self._gameObjects, lambda c: c._onEnable(), objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
+        self._executeInOrder(self._gameObjects, lambda c: c._onEnable(),
+                             objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
 
         # call starts
-        self._executeInOrder(self._gameObjects, lambda c: c._start(), objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
-        
+        self._executeInOrder(self._gameObjects, lambda c: c._start(),
+                             objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
+
         return None
 
     def _executeInOrder(self, objects, fn, objFilter=lambda obj: True, compFilter=lambda c: True):
@@ -197,7 +202,7 @@ class Scene(gym.Env):
     def getComponentsInExecutionOrderFromObjects(self, objects, objFilter=lambda obj: True, compFilter=lambda c: True):
         components = []
         for obj in filter(objFilter, objects):
-                components.extend(filter(compFilter, obj._components))
+            components.extend(filter(compFilter, obj._components))
         return self._inExecutionOrder(components)
 
     def getAllComponentsInExecutionOrder(self, objFilter=lambda obj: True, compFilter=lambda c: True):
@@ -210,18 +215,20 @@ class Scene(gym.Env):
         return sorted(components, key=lambda c: (type(c).executionOrder, c._init_order))
 
     def _step(self, action):
-        self._executeInOrder(self._gameObjects, lambda c: c.update(), objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
+        self._executeInOrder(self._gameObjects, lambda c: c.update(),
+                             objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
         return None, 0, False, {}
 
     def _render(self, mode='human', close=False):
         raise NotImplementedError()
 
-    def _seed(self, seed = None):
+    def _seed(self, seed=None):
         self.random.seed(seed)
 
     def _close(self):
         self._destroyObjects(destroyAll=True)
         self._isRunning = False
+
 
 def set_execution_order(component_classes: List[GameComponent]):
     order = 0
