@@ -1,9 +1,8 @@
 import gymGame
 import numpy as np
-import math
 import gym
 import random
-from typing import List, Set, TypeVar
+from typing import List, Set, TypeVar  # noqa: F401
 
 
 class GameObject:
@@ -132,6 +131,7 @@ class Scene(gym.Env):
         self._dontDestroyOnLoadObjects = set()  # type: Set[GameObject]
         self._isRunning = False
         self.random = random.Random()
+        self.nprandom = np.random.RandomState()
 
     def instantiate(self, cls, position=None) -> GameObject:
         if issubclass(cls, GameObject):
@@ -155,7 +155,8 @@ class Scene(gym.Env):
         return next(filter(lambda o: o.name == name, self._gameObjects), None)
 
     def dontDestroyOnLoad(self, gameObj: GameObject):
-        print('GameObject {0} marked as dontDestroyOnLoad'.format(gameObj.name))
+        print('GameObject {0} marked as dontDestroyOnLoad'.format(
+            gameObj.name))
         self._dontDestroyOnLoadObjects.add(gameObj)
 
     def destroy(self, gameObj: GameObject):
@@ -224,6 +225,7 @@ class Scene(gym.Env):
 
     def _seed(self, seed=None):
         self.random.seed(seed)
+        self.nprandom.seed(seed)
 
     def _close(self):
         self._destroyObjects(destroyAll=True)
