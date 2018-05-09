@@ -183,7 +183,7 @@ class Scene(gym.Env):
         self._isRunning = False
         GameComponent.count = 0
 
-    def _reset(self):
+    def reset(self):
         self._isRunning = True
         # run all awakes and enabled
         self._executeInOrder(self._gameObjects, lambda c: c._awake())
@@ -215,19 +215,19 @@ class Scene(gym.Env):
                 type(c).executionOrder = 0
         return sorted(components, key=lambda c: (type(c).executionOrder, c._init_order))
 
-    def _step(self, action):
+    def step(self, action):
         self._executeInOrder(self._gameObjects, lambda c: c.update(),
                              objFilter=lambda obj: obj.isActive, compFilter=lambda c: c._isEnabled)
         return None, 0, False, {}
 
-    def _render(self, mode='human', close=False):
+    def render(self, mode='human', close=False):
         raise NotImplementedError()
 
-    def _seed(self, seed=None):
+    def seed(self, seed=None):
         self.random.seed(seed)
         self.nprandom.seed(seed)
 
-    def _close(self):
+    def close(self):
         self._destroyObjects(destroyAll=True)
         self._isRunning = False
 
